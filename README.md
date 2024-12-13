@@ -1,19 +1,19 @@
-# WIP: Pico ORM
-Pico ORM is a minimalist PostgreSQL ORM written in TypeScript that allows you to easily interact with your database. With built-in support for query building, hooks, and flexible chaining, Pico ORM makes database interactions simple and efficient while giving developers full control over their database operations.
+# WIP: Lily (Object Relational Mapper)
+Lily (ORM) is a minimalist PostgreSQL ORM written in TypeScript that allows you to easily interact with your database. With built-in support for query building, hooks, and flexible chaining, Lily (ORM) makes database interactions simple and efficient while giving developers full control over their database operations.
 
 - - -
 ## Features
-- Flexible Query Chaining: The order in which you write the query chains doesn’t matter. Pico ORM automatically handles the correct order for SQL query construction.
+- Flexible Query Chaining: The order in which you write the query chains doesn’t matter. Lily (ORM) automatically handles the correct order for SQL query construction.
 - Hooks System: Customise behavior by injecting hooks into various stages of the query lifecycle, such as before and after select, insert, update, and delete operations.
 - TypeScript Support: Fully typed with autocompletion, ensuring a smooth development experience.
 - Minimalist and Lightweight: Only the essentials, no unnecessary overhead.
 
 ### Custom Error Handling (Dependency Injection)
-PicoORM allows you to inject your own error-handling mechanism, giving you full control over how database-related errors are managed in your application. This is particularly useful for logging errors, integrating with external monitoring tools, or customising error messages.
+Lily allows you to inject your own error-handling mechanism, giving you full control over how database-related errors are managed in your application. This is particularly useful for logging errors, integrating with external monitoring tools, or customising error messages.
 #### How to use a Custom Error Handler
-You can pass your custom error handler when creating an instance of `PicoORM`. The error handler should be a class or object that implements the `handleError` method, which takes the error and an optional context string as arguments.
+You can pass your custom error handler when creating an instance of `Lily`. The error handler should be a class or object that implements the `handleError` method, which takes the error and an optional context string as arguments.
 ```typescript
-import { PicoORM } from 'pico-orm';
+import { Lily } from 'lily-orm';
 
 class CustomErrorHandler {
   static handleError(error: Error, context: string): void {
@@ -22,7 +22,7 @@ class CustomErrorHandler {
   }
 }
 
-const UserModel = new PicoORM('users', {
+const UserModel = new Lily('users', {
   connectionString: 'your_connection_string',
   errorHandler: CustomErrorHandler, // Inject custom error handler here
 });
@@ -42,21 +42,21 @@ try {
 - Seamless integration with existing error-reporting infrastructure.
 
 
-> <em>If no custom error handler is provided, PicoORM uses its default error handler, which logs errors to the console.</em>
+> <em>If no custom error handler is provided, Lily uses its default error handler, which logs errors to the console.</em>
 - - -
 ## Installation
 ```bash
-    $ npm install pico-orm # WIP: not published yet so ignore (currently finishing off unit tests for Pico)
+    $ npm install lily-orm # WIP: not published yet so ignore (currently finishing off unit tests for Lily)
 ```
 
 - - -
 ## Getting Started
 ### 1. Create a Model Class
-Create a class that extends `PicoORM` and implements the `mapRowToModel` method, which maps database rows to your model.
+Create a class that extends `Lily` and implements the `mapRowToModel` method, which maps database rows to your model.
 ```typescript
-import { PicoORM } from 'pico-orm';
+import { Lily } from 'lily-orm';
 
-class User extends PicoORM<UserModel> {
+class User extends Lily<UserModel> {
     mapRowToModel(row: any): UserModel {
         return {
             id: row.id,
@@ -105,7 +105,7 @@ Generates:
 SELECT * FROM users WHERE age = 30 AND name LIKE '%John%' OR city = 'New York'
 ```
 ### 3. Execute Insert, Update, and Delete Operations
-Pico ORM also supports `insert`, `update`, and `delete` methods with hooks.
+Lily (ORM) also supports `insert`, `update`, and `delete` methods with hooks.
 ```typescript
 // Insert a user
 await UserModel.insert({ name: 'Alice', age: 25 });
@@ -246,7 +246,7 @@ Deletes records based on the `WHERE` conditions.
 - - -
 
 ## Chaining Flexibility
-Pico ORM allows for flexible query chaining. The order in which you chain methods like `where`, `select`, `group`, `order`, and `limit` doesn't matter. You can apply them in any order, and the ORM will handle constructing the correct SQL query.
+Lily (ORM) allows for flexible query chaining. The order in which you chain methods like `where`, `select`, `group`, `order`, and `limit` doesn't matter. You can apply them in any order, and the ORM will handle constructing the correct SQL query.
 #### Examples of Flexible Chaining
 ```typescript
 const result1 = await UserModel
@@ -269,7 +269,7 @@ In all of these examples, the order of method calls doesn't matter. The ORM will
 
 - - -
 ## Conclusion
-Pico ORM is a flexible, minimalist PostgreSQL ORM for TypeScript that lets you build queries with ease while maintaining full control over the execution. With its flexible chaining system, hooks, and support for all essential SQL operations, Pico ORM offers a simple yet powerful approach to database management in your applications.
+Lily (ORM) is a flexible, minimalist PostgreSQL ORM for TypeScript that lets you build queries with ease while maintaining full control over the execution. With its flexible chaining system, hooks, and support for all essential SQL operations, Lily (ORM) offers a simple yet powerful approach to database management in your applications.
 
 For more advanced use cases, you can extend the base functionality and leverage hooks for complex workflows.
 
