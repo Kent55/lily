@@ -1,4 +1,4 @@
-# WIP: Lily (Object Relational Mapper)
+# WIP: Lily (Object-relational Mapper)
 Lily (ORM) is a minimalist PostgreSQL ORM written in TypeScript that allows you to easily interact with your database. With built-in support for query building, hooks, and flexible chaining, Lily (ORM) makes database interactions simple and efficient while giving developers full control over their database operations.
 
 - - -
