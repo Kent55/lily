@@ -1,278 +1,237 @@
-# WIP: Lily (Object-relational Mapper)
-Lily (ORM) is a minimalist PostgreSQL ORM written in TypeScript that allows you to easily interact with your database. With built-in support for query building, hooks, and flexible chaining, Lily (ORM) makes database interactions simple and efficient while giving developers full control over their database operations.
+# [WIP] Lily (ORM)
 
-- - -
-## Features
-- Flexible Query Chaining: The order in which you write the query chains doesn’t matter. Lily (ORM) automatically handles the correct order for SQL query construction.
-- Hooks System: Customise behavior by injecting hooks into various stages of the query lifecycle, such as before and after select, insert, update, and delete operations.
-- TypeScript Support: Fully typed with autocompletion, ensuring a smooth development experience.
-- Minimalist and Lightweight: Only the essentials, no unnecessary overhead.
+Lily (ORM) is a TypeScript-based PostgreSQL ORM and schema management tool that is strictly-typed and provides: global configuration, migrations, hooks, and chainable queries. It enables developers to build and maintain evolving PostgreSQL-backed applications with confidence, clarity, and flexibility.
 
-### Custom Error Handling (Dependency Injection)
-Lily allows you to inject your own error-handling mechanism, giving you full control over how database-related errors are managed in your application. This is particularly useful for logging errors, integrating with external monitoring tools, or customising error messages.
-#### How to use a Custom Error Handler
-You can pass your custom error handler when creating an instance of `Lily`. The error handler should be a class or object that implements the `handleError` method, which takes the error and an optional context string as arguments.
+## Key Features
+- **Chai-Style Chainable APIs:** Compose queries, schema definitions, and migrations in a fluent and intuitive manner.
+- **Strict Typing and Strong Type Safety:** Every interaction is typed, catching errors at compile-time.
+- **Hooks System:** Insert custom logic before or after select, insert, update, and delete operations.
+- **Typed Migrations:** Version-controlled migrations let you evolve your database schema safely and revert changes if needed.
+- **Advanced Queries:** Use DISTINCT, UNION, HAVING, and flexible WHERE/HAVING clauses to build complex SQL queries.
+- **Environment Checks:** Enforces Node.js (≥18.0.0) and PostgreSQL (≥14.0.0) minimum versions.
+- **Global Config and Inline Overrides:** Set global defaults or override them inline, including primary key defaults, minimum versions, and migrations table prefixing to avoid conflicts.
+- **Schema Builder:** Programmatically define and modify schemas with typed column definitions, constraints, and foreign keys.
+
+## Installation
+```bash
+npm install lily-orm // WIP
+```
+Ensure Node.js ≥18.0.0 and PostgreSQL ≥14.0.0. Lily will throw descriptive errors if these requirements are not met, guiding you to update your environment.
+
+## Getting Started
+### Configuring Defaults
 ```typescript
-import { Lily } from 'lily-orm';
+import { BaseORM, setGlobalConfig } from 'lily-orm';
 
-class CustomErrorHandler {
-  static handleError(error: Error, context: string): void {
-    console.error(`[Custom Error Handler] [${context}]`, error.message);
-    // Additional logic such as logging to an external service
+setGlobalConfig({
+  minNodeVersion: '18.0.0',
+  minPostgresVersion: '14.0',
+  primaryKeyDefaultType: 'int',
+  migrationTablePrefix: 'lily_'
+});
+
+BaseORM.setDefaultConnectionConfig({
+  user: 'postgres',
+  host: 'localhost',
+  database: 'testdb',
+  password: 'password',
+  port: 5432
+});
+```
+Now Node.js must be at least 18.0.0, PostgreSQL at least 14.0.0, primary keys default to `int`, and migrations are tracked in `lily_migrations` rather than `migrations` to avoid conflicts.
+
+### Defining a Model
+```typescript
+interface UserRow {
+  id: number;
+  name: string;
+  age: number;
+}
+
+class UserORM extends BaseORM<UserRow> {
+  mapRowToModel(row: any): UserRow {
+    return { id: row.id, name: row.name, age: row.age };
   }
 }
 
-const UserModel = new Lily('users', {
-  connectionString: 'your_connection_string',
-  errorHandler: CustomErrorHandler, // Inject custom error handler here
-});
-
-// Example usage
-try {
-  const users = await UserModel
-    .where.field('age').is(30)
-    .all();
-} catch (err) {
-  console.error('Handled by CustomErrorHandler');
-}
+const UserModel = new UserORM('users');
 ```
-#### Benefits
-- Centralised error handling across all queries and operations.
-- Enhanced flexibility for logging or monitoring database issues.
-- Seamless integration with existing error-reporting infrastructure.
+`UserRow` defines the shape of a single user record (a database row). By extending `BaseORM<UserRow>`, all queries and operations related to `UserModel` return typed `UserRows`.
 
+### Querying (Chai-Style)
+Lily (ORM) provides a chai-style API for queries. You can reorder chainable methods before `.fetch()` without affecting the final SQL.
 
-> <em>If no custom error handler is provided, Lily uses its default error handler, which logs errors to the console.</em>
-- - -
-## Installation
-```bash
-    $ npm install lily-orm # WIP: not published yet so ignore (currently finishing off unit tests for Lily)
-```
-
-- - -
-## Getting Started
-### 1. Create a Model Class
-Create a class that extends `Lily` and implements the `mapRowToModel` method, which maps database rows to your model.
-```typescript
-import { Lily } from 'lily-orm';
-
-class User extends Lily<UserModel> {
-    mapRowToModel(row: any): UserModel {
-        return {
-            id: row.id,
-            name: row.name,
-            age: row.age,
-        };
-    }
-}
-
-const UserModel = new User('users', { user: 'postgres', host: 'localhost', database: 'testdb', password: 'password', port: 5432 });
-```
-### 2. Define Query Chains
-You can build queries using flexible chains like `select`, `where`, `group`, `order`, and `limit`.
-#### Example 1: Select All Fields with where Condition
-```typescript
-const users = await UserModel
-  .where.field('name').equals('John')
-  .selectAll;
-
-console.log(users);
-```
-#### Example 2: Select Specific Fields and Apply where, group, and order
-```typescript
-const users = await UserModel
-  .select.fields('id', 'name')
-  .where.field('age').is(30)
-  .limit.to(5)
-  .order.by('name')
-  .group.by('age')
-  .all();
-
-console.log(users);
-```
-#### Example 3: Query with `.and` and `.or`
 ```typescript
 const users = await UserModel
   .where.field('age').is(30)
   .and()
   .where.field('name').like('%John%')
-  .or()
-  .where.field('city').is('New York')
-  .all();
-```
-Generates:
-```sql
-SELECT * FROM users WHERE age = 30 AND name LIKE '%John%' OR city = 'New York'
-```
-### 3. Execute Insert, Update, and Delete Operations
-Lily (ORM) also supports `insert`, `update`, and `delete` methods with hooks.
-```typescript
-// Insert a user
-await UserModel.insert({ name: 'Alice', age: 25 });
-
-// Update a user
-await UserModel
-  .where.field('id').is(1)
-  .update({ name: 'Alice', age: 26 });
-
-// Delete a user
-await UserModel
-  .where.field('id').is(1)
-  .delete();
-```
-
-- - -
-### Hook System
-You can hook into various stages of the ORM lifecycle, such as before and after `select`, `insert`, `update`, and `delete` operations. This allows for powerful customisation and validation.
-#### Available Hooks
-- `beforeSelect`: Triggered before a `SELECT` query.
-- `afterSelect`: Triggered after a `SELECT` query.
-- `beforeInsert`: Triggered before an `INSERT` operation.
-- `afterInsert`: Triggered after an `INSERT` operation.
-- `beforeUpdate`: Triggered before an `UPDATE` operation.
-- `afterUpdate`: Triggered after an `UPDATE` operation.
-- `beforeDelete`: Triggered before a `DELETE` operation.
-- `afterDelete`: Triggered after a `DELETE` operation.
-
-#### Example: Register a Hook
-```typescript
-// Register a hook to log before a SELECT operation
-UserModel.registerHook('beforeSelect', async (orm) => {
-  console.log('Before SELECT:', orm);
-});
-
-// Register a hook to validate data before inserting
-UserModel.registerHook('beforeInsert', async (orm, data) => {
-  if (!data.name || !data.age) {
-    throw new Error('Name and Age are required');
-  }
-});
-```
-
-- - -
-## Query Chain Methods
-### `where.field(field: string)`
-Adds a `WHERE` clause with the specified field.
-#### Supported Operators
-- `.is(value: any)`: Adds `field = value`.
-- `.equal(value: any)`: `Alias for .is(value)`.
-- `.equals(values: any[])`: Adds `field IN (value1, value2, ...)`.
-- `.contains(values: any[])`: Alias for `.equals(values)`.
-- `.like(value: any)`: Adds `field LIKE value`.
-
-#### Example:
-```typescript
-.where.field('name').equals('John')
-```
-`.and()`
-Adds an `AND` connector between conditions.
-#### Example:
-```typescript
-.where.field('age').is(30)
-.and()
-.where.field('name').like('%John%')
-```
-Generates:
-```sql
-WHERE age = 30 AND name LIKE '%John%'
-```
-`.or()`
-Adds an `OR` connector between conditions.
-#### Example:
-```typescript
-.where.field('age').is(30)
-.or()
-.where.field('name').like('%John%')
-```
-Generates:
-```sql
-WHERE age = 30 OR name LIKE '%John%'
-```
-### `select.fields(...fields: string[])`
-Selects specific fields for the query.
-#### Example:
-```typescript
-.select.fields('id', 'name')
-```
-### `selectAll`
-Selects all fields (`SELECT *`).
-#### Example:
-```typescript
-.selectAll
-```
-### `group.by(field: string)`
-Groups results by the specified field.
-#### Example:
-```typescript
-.group.by('age')
-```
-### `order.by(field: string)`
-Orders the results by the specified field.
-#### Example:
-```typescript
-.order.by('name')
-```
-### `limit.to(count: number)`
-Limits the number of results.
-#### Example:
-```typescript
-.limit.to(5)
-```
-### `all()`
-Executes the `SELECT` query and returns the results.
-#### Example:
-```typescript
-.all()
-```
-### `insert(data: Partial<T>)`
-Inserts a new record into the database.
-#### Example:
-```typescript
-.insert({ name: 'Alice', age: 25 })
-```
-### `update(data: Partial<T>)`
-Updates existing records based on the `WHERE` conditions.
-#### Example:
-```typescript
-.update({ name: 'Alice', age: 26 })
-```
-### `delete()`
-Deletes records based on the `WHERE` conditions.
-#### Example:
-```typescript
-.delete()
-```
-
-- - -
-
-## Chaining Flexibility
-Lily (ORM) allows for flexible query chaining. The order in which you chain methods like `where`, `select`, `group`, `order`, and `limit` doesn't matter. You can apply them in any order, and the ORM will handle constructing the correct SQL query.
-#### Examples of Flexible Chaining
-```typescript
-const result1 = await UserModel
-  .where.field('name').equals('John')
-  .selectAll;
-
-const result2 = await UserModel
-  .selectAll
-  .where.field('name').equals('John');
-
-const result3 = await UserModel
-  .select.fields('id', 'name')
-  .where.field('age').is(30)
-  .limit.to(5)
+  .select.all
   .order.by('name')
-  .group.by('age')
-  .all();
+  .fetch();
 ```
-In all of these examples, the order of method calls doesn't matter. The ORM will internally manage the correct construction of the SQL query.
+Or reorder them
+```typescript
+const users = await UserModel
+  .select.all
+  .where.field('name').like('%John%')
+  .and()
+  .where.field('age').is(30)
+  .order.by('name')
+  .fetch();
+```
+The result is the same, as Lily constructs the correct SQL regardless of the order of chainable methods (apart from `.fetch()`).
+#### Additional Query Features
+- `.select.distinct` for distinct rows
+- `.union.with('...')`, `.union.all('...')` for UNION queries
+- `.having.field(...)` after grouping
+- `.limit.to(n)` to limit results
 
-- - -
+### CRUD Operations
+```typescript
+await UserModel.insert({ name: 'Alice', age: 25 });
+await UserModel.where.field('id').is(1).update({ age: 26 });
+await UserModel.where.field('id').is(1).delete();
+```
+
+### Hooks
+Insert logic before/after operations:
+```typescript
+UserModel.registerHook('beforeSelect', async (orm) => {
+  console.log('About to run SELECT');
+});
+```
+Available hooks: `beforeSelect`, `afterSelect`, `beforeInsert`, `afterInsert`, `beforeUpdate`, `afterUpdate`, `beforeDelete`, `afterDelete`.
+
+## Schema Builder
+Define or modify database schemas with the chai-style schema builder and column builder:
+
+```typescript
+import { SchemaBuilder } from 'lily-orm';
+
+await new SchemaBuilder({ connectionString: 'postgres://user:pass@localhost:5432' })
+  .create.table('users')
+    .add.column('id').is.primary.key().done()
+    .add.column('name').varchar(100).is.not.null.is.unique.done()
+    .add.column('age').integer.default(0).done()
+    .add.column('profile_id').integer.foreign.key('profiles', 'id').done()
+  .with.data([{ name: 'John Doe', age: 30 }, { name: 'Jane Smith', age: 25 }])
+  .execute();
+```
+
+#### ColumnBuilder Features
+- Data types: `.integer`, `.text`, `.boolean`, `.date`, `.timestamp`, `.varchar(length)`, `.serial`, or `.type('custom')`
+- Constraints: `.is.not.null`, `.is.unique`, `.is.primary.key(type?)`
+- Foreign keys: `.foreign.key('table', 'col')`
+
+If working with an existing database, consider setting `migrationTablePrefix` or generating a unique prefix to avoid conflicts with existing `migrations` tables. You can also override types inline, for instance `is.primary.key('INT UNSIGNED')`.
+
+## Migrations
+Migrations let you track and apply schema changes over time. Lily includes typed migrations and a `MigrationManager` to apply or roll them back.
+
+**Existing Migrations as Examples:** The `migrations` directory contains example migrations (`001_create_users_table.ts`, `002_create_posts_table.ts`) that are runnable references. They aren’t just for show; you can run them to create example tables and understand how migrations work.
+
+#### Running Migrations:
+```typescript
+import { MigrationManager } from 'lily-orm/schema/MigrationManager';
+import { migrations } from 'lily-orm/migrations';
+
+// MigrationManager accepts either a connection string or ORMOptions
+const manager = new MigrationManager('postgres://user:pass@localhost:5432');
+
+migrations.forEach(m => manager.registerMigration(m));
+await manager.migrate.up();
+
+console.log('Current version:', await manager.getCurrentVersion());
+
+// Roll back to a previous state
+await manager.migrate.down('001_create_users_table');
+```
+
+#### Writing Fresh Migrations for a New Database:
+```typescript
+import { Migration } from 'lily-orm/types/Migrations';
+import { Client } from 'pg';
+
+export const initialSetup: Migration = {
+  id: '001_initial_setup',
+  async up(client: Client) {
+    await client.query(`CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(100), age INT);`);
+  },
+  async down(client: Client) {
+    await client.query(`DROP TABLE IF EXISTS users;`);
+  }
+};
+```
+Register and run similarly to the examples provided.
+
+Migrations for an Existing Database: Write migrations that only add or modify columns/tables without breaking what’s already there. If concerned about naming conflicts, set `migrationTablePrefix` globally or inline to ensure a unique migrations table name, e.g., `lily_migrations`.
+
+## How to Run Migrations and Schema Builder in Practice
+Lily (ORM) does not ship with a built-in CLI command. Instead, you integrate these operations into your own scripts. For instance, you could:
+
+1. **npm Scripts:**
+   - Create a `migrate.js` script in your project:
+```javascript
+// migrate.js
+const { MigrationManager } = require('lily-orm/schema/MigrationManager');
+const { migrations } = require('./migrations'); // your local migrations directory
+
+(async () => {
+  const manager = new MigrationManager('postgres://user:pass@localhost:5432');
+  migrations.forEach(m => manager.registerMigration(m));
+  await manager.migrate.up();
+  console.log('Migrations applied.');
+})().catch(console.error);
+```
+Then run `node migrate.js` or add `"migrate": "node migrate.js"` to your `package.json` scripts.
+
+2. **Inline Code in Your App's Start-up:**
+    - Your application’s initialisation code could run migrations before starting the main server logic.
+3. **Custom CLI Tools:**
+    - If you prefer a more elaborate setup, you can wrap Lily (ORM) calls in a CLI using tools like `yargs` or `commander`, providing commands like `myapp migrate up`.
+
+Similarly, for the Schema Builder, you write a script that uses `SchemaBuilder` to create or modify tables, then run that script via npm or directly with `node`.
+
+#### Example SchemaBuilder Script:
+```javascript
+// build-schema.js
+const { SchemaBuilder } = require('lily-orm/schema/SchemaBuilder');
+
+(async () => {
+  await new SchemaBuilder({ connectionString: 'postgres://user:pass@localhost:5432' })
+    .create.table('users')
+      .add.column('id').is.primary.key().done()
+      .add.column('name').varchar(100).is.not.null.done()
+    .execute();
+
+  console.log('Schema created/updated.');
+})().catch(console.error);
+```
+
+Run `node build-schema.js` or add `"build-schema": "node build-schema.js"` in `package.json`.
+
+By integrating Lily’s APIs into your own scripts or CLI tools, you have complete control and can run migrations and schema modifications whenever needed.
+
+---
+
+## Environment Checks
+If Node.js or PostgreSQL versions are lower than configured minimums, Lily halts early and advises you to upgrade. Override these defaults with `setGlobalConfig()` if different versions are acceptable.
+
+---
+
+## Testing
+Write Jest-based tests in a `tests/` directory for queries, hooks, migrations, and schema building. Use `npm test` to run them. By thoroughly testing each component, you ensure the robustness and maintainability of your application.
+
+---
+
 ## Conclusion
-Lily (ORM) is a flexible, minimalist PostgreSQL ORM for TypeScript that lets you build queries with ease while maintaining full control over the execution. With its flexible chaining system, hooks, and support for all essential SQL operations, Lily (ORM) offers a simple yet powerful approach to database management in your applications.
+Lily (ORM) provides a flexible, typed, and maintainable foundation for building, querying, and evolving PostgreSQL-backed applications. With chai-style chaining, environment checks, typed migrations, hooks, schema builders, and custom configurability (such as prefixing migration tables), Lily equips you with all the tools needed to manage and grow your database confidently.
 
-For more advanced use cases, you can extend the base functionality and leverage hooks for complex workflows.
+Integrate migrations and schema building into your own scripts or npm tasks, reorder chained methods without changing outcomes, and rely on strict typing for safety and clarity. Lily (ORM) is ready to support you as your application and database requirements expand and evolve.
 
-- - -
+---
+
 ## License
-MIT License. See `LICENSE` file for more details.
+Lily (ORM) is open-sourced under the MIT license. Other third party dependencies which Lily requires may have alternate
+licences. Please ensure you verify each package and their respective licenses.
